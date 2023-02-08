@@ -316,10 +316,26 @@ class ShibbolethHandler extends Handler {
 			$this->_contextId,
 			'shibbolethHeaderUin'
 		);
+		
 		$emailHeader = $this->_plugin->getSetting(
 			$this->_contextId,
 			'shibbolethHeaderEmail'
 		);
+		
+		// AR
+		$orcidHeader = $this->_plugin->getSetting(
+			$this->_contextId,
+			'shibbolethHeaderOrcid'
+		);
+		
+		$accessTokenHeader = $this->_plugin->getSetting(
+			$this->_contextId,
+			'shibbolethHeaderAccessToken'
+		);
+		
+		syslog(LOG_INFO, "User orcid test: $_SERVER[$uinHeader]");
+		//syslog(LOG_INFO, "User orcid test: $_SERVER[$orcidHeader]");
+		
 
 		// We rely on these headers being present.
 		if (!isset($_SERVER[$uinHeader])) {
@@ -341,6 +357,11 @@ class ShibbolethHandler extends Handler {
 
 		$uin = $_SERVER[$uinHeader];
 		$userEmail = $_SERVER[$emailHeader];
+		
+		// AR @@@ TODO: add the real headers once the attribute is available
+		
+		$userOrcid = "mockOrcidId"; //isset($_SERVER[$orcidHeader]) ? $_SERVER[$orcidHeader] : null;
+		$userAccessToken = "mockAccessToken"; //isset($_SERVER[$accessTokenHeader]) ? $_SERVER[$accessTokenHeader] : null;
 
 		// The UIN must be set; otherwise login failed.
 		if (is_null($uin)) {
@@ -353,6 +374,16 @@ class ShibbolethHandler extends Handler {
 		$userDao = DAORegistry::getDAO('UserDAO');
 		$user = $userDao->getUserByAuthStr($uin, true);
 		if (isset($user)) {
+			// add ORCID iD only if not connected yet
+			if (empty($user->getOrcid())){
+				$user->setOrcid($userOrcid);
+				$user->setData('orcidAccessToken', $userAccessToken);
+			}
+			else{
+				// @@@ TODO: if user already has a connected ORCID iD check if stored ORCID iD differs from Shib attribute (?)
+				// or just ignore and inform the user that they already have an ORCID iD connected?
+			}
+			
 			syslog(LOG_INFO, "Shibboleth located returning user $uin");
 		} else {
 			// We use the e-mail as a key.
@@ -580,6 +611,10 @@ class ShibbolethHandler extends Handler {
 		$uinHeader = $this->_plugin->getSetting(
 			$this->_contextId,
 			'shibbolethHeaderUin'
+		);		
+		$orcidHeader = $this->_plugin->getSetting(
+			$this->_contextId,
+			'shibbolethHeaderOrcid'
 		);
 		$emailHeader = $this->_plugin->getSetting(
 			$this->_contextId,
@@ -637,6 +672,7 @@ class ShibbolethHandler extends Handler {
 		}
 
 		// optional values
+		$userOrcid = isset($_SERVER[$orcidHeader]) ? $_SERVER[$orcidHeader] : null;
 		$userInitials = isset($_SERVER[$initialsHeader]) ? $_SERVER[$initialsHeader] : null;
 		$userPhone = isset($_SERVER[$phoneHeader]) ? $_SERVER[$phoneHeader] : null;
 		$userMailing = isset($_SERVER[$mailingHeader]) ? $_SERVER[$mailingHeader] : null;
@@ -658,6 +694,11 @@ class ShibbolethHandler extends Handler {
 		
 		if (!empty($userLastName)) {
 			$user->setFamilyName($userLastName, $sitePrimaryLocale);
+		}
+		
+		// AR: set Orcid
+		if (!empty($userOrcid)) {
+			$user->setOrcid($userOrcid);
 		}
 		if (!empty($userInitials)) {
 			$user->setInitials($userInitials);
