@@ -360,7 +360,7 @@ class ShibbolethHandler extends Handler {
 		
 		// AR @@@ TODO: add the real headers once the attribute is available
 		
-		$userOrcid = "mockOrcidId"; //isset($_SERVER[$orcidHeader]) ? $_SERVER[$orcidHeader] : null;
+		$userOrcid = isset($_SERVER[$orcidHeader]) ? $_SERVER[$orcidHeader] : null;
 		$userAccessToken = "mockAccessToken"; //isset($_SERVER[$accessTokenHeader]) ? $_SERVER[$accessTokenHeader] : null;
 
 		// The UIN must be set; otherwise login failed.
@@ -374,7 +374,7 @@ class ShibbolethHandler extends Handler {
 		$userDao = DAORegistry::getDAO('UserDAO');
 		$user = $userDao->getUserByAuthStr($uin, true);
 		if (isset($user)) {
-			// add ORCID iD only if not connected yet
+			// add ORCID iD and access token only if not connected yet
 			if (empty($user->getOrcid())){
 				$user->setOrcid($userOrcid);
 				$user->setData('orcidAccessToken', $userAccessToken);
