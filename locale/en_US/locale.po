@@ -35,6 +35,9 @@ msgstr "Please enter the header in which the Shibboleth UIN is found."
 msgid "plugins.generic.shibboleth.manager.settings.shibbolethHeaderOrcid"
 msgstr "HTTP Header ($_SERVER environment variable key) with Shibboleth ORCID iD"
 
+msgid "plugins.generic.shibboleth.manager.settings.shibbolethHeaderAccessToken"
+msgstr "HTTP Header ($_SERVER environment variable key) with Shibboleth Access Token for ORCID iD"
+
 msgid "plugins.generic.shibboleth.manager.settings.shibbolethHeaderFirstName"
 msgstr "HTTP Header ($_SERVER environment variable key) with Shibboleth first or given name"
 

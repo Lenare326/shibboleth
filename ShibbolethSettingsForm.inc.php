@@ -57,6 +57,7 @@ class ShibbolethSettingsForm extends Form {
 			'shibbolethWayfUrl' => $this->_plugin->getSetting($this->_contextId, 'shibbolethWayfUrl'),
 			'shibbolethHeaderUin' => $this->_plugin->getSetting($this->_contextId, 'shibbolethHeaderUin'),
 			'shibbolethHeaderOrcid' => $this->_plugin->getSetting($this->_contextId, 'shibbolethHeaderOrcid'),
+			'shibbolethHeaderAccessToken' => $this->_plugin->getSetting($this->_contextId, 'shibbolethHeaderAccessToken'),
 			'shibbolethHeaderFirstName' => $this->_plugin->getSetting($this->_contextId, 'shibbolethHeaderFirstName'),
 			'shibbolethHeaderLastName' => $this->_plugin->getSetting($this->_contextId, 'shibbolethHeaderLastName'),
 			'shibbolethHeaderInitials' => $this->_plugin->getSetting($this->_contextId, 'shibbolethHeaderInitials'),
@@ -79,6 +80,7 @@ class ShibbolethSettingsForm extends Form {
 		$this->readUserVars(array('shibbolethWayfUrl'));
 		$this->readUserVars(array('shibbolethHeaderUin'));
 		$this->readUserVars(array('shibbolethHeaderOrcid'));
+		$this->readUserVars(array('shibbolethHeaderAccessToken'));
 		$this->readUserVars(array('shibbolethHeaderFirstName'));
 		$this->readUserVars(array('shibbolethHeaderLastName'));
 		$this->readUserVars(array('shibbolethHeaderInitials'));
@@ -119,12 +121,24 @@ class ShibbolethSettingsForm extends Form {
 			trim($this->getData('shibbolethHeaderUin'), "\"\';"),
 			'string'
 		);
+		
+		// AR headers for Orcid via Shibboleth
 		$this->_plugin->updateSetting(
 			$this->_contextId,
 			'shibbolethHeaderOrcid',
 			trim($this->getData('shibbolethHeaderOrcid'), "\"\';"),
 			'string'
+		);		
+		$this->_plugin->updateSetting(
+			$this->_contextId,
+			'shibbolethHeaderAccessToken',
+			trim($this->getData('shibbolethHeaderAccessToken'), "\"\';"),
+			'string'
 		);
+		
+		// AR end
+		
+		
 		$this->_plugin->updateSetting(
 			$this->_contextId,
 			'shibbolethHeaderFirstName',

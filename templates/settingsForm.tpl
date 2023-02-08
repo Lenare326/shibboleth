@@ -25,6 +25,7 @@
 		{fbvElement id="shibbolethWayfUrlSetting" type="text" name="shibbolethWayfUrl" value=$shibbolethWayfUrl label="plugins.generic.shibboleth.manager.settings.shibbolethWayfUrl" required="true"}
 		{fbvElement id="shibbolethHeaderUinSetting" type="text" name="shibbolethHeaderUin" value=$shibbolethHeaderUin label="plugins.generic.shibboleth.manager.settings.shibbolethHeaderUin" required="true"}
 		{fbvElement id="shibbolethHeaderOrcidSetting" type="text" name="shibbolethHeaderOrcid" value=$shibbolethHeaderOrcid label="plugins.generic.shibboleth.manager.settings.shibbolethHeaderOrcid"}
+		{fbvElement id="shibbolethHeaderAccessTokenSetting" type="text" name="shibbolethHeaderAccessToken" value=$shibbolethHeaderAccessToken label="plugins.generic.shibboleth.manager.settings.shibbolethHeaderAccessToken"}
 		{fbvElement id="shibbolethHeaderFirstNameSetting" type="text" name="shibbolethHeaderFirstName" value=$shibbolethHeaderFirstName label="plugins.generic.shibboleth.manager.settings.shibbolethHeaderFirstName" required="true"}
 		{fbvElement id="shibbolethHeaderLastNameSetting" type="text" name="shibbolethHeaderLastName" value=$shibbolethHeaderLastName label="plugins.generic.shibboleth.manager.settings.shibbolethHeaderLastName"}
 		{fbvElement id="shibbolethHeaderInitialsSetting" type="text" name="shibbolethHeaderInitials" value=$shibbolethHeaderInitials label="plugins.generic.shibboleth.manager.settings.shibbolethHeaderInitials"}
