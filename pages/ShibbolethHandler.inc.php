@@ -406,12 +406,9 @@ class ShibbolethHandler extends Handler {
 					$userDao->updateObject($user);
 				}
 			} else {
-				syslog(LOG_INFO, "Shibboleth located returning email $userEmail");
-				// AR if user does not have an account yet, send back to LoginPage
-				// @@@ TODO: tell the user to register first or redirect to register page if registration is enabled
-				Validation::logout();
-				Validation::redirectLogin();
-				return false;
+				syslog(LOG_INFO, "Shibboleth noted new user, created account");
+				// new account is automatically created if the user was not registered
+				$user = $this->_registerFromShibboleth();
 			}
 		}
 		
@@ -627,6 +624,10 @@ class ShibbolethHandler extends Handler {
 			$this->_contextId,
 			'shibbolethHeaderOrcid'
 		);
+		$accessTokenHeader = $this->_plugin->getSetting(
+		$this->_contextId,
+		'shibbolethHeaderAccessToken'
+		);
 		$emailHeader = $this->_plugin->getSetting(
 			$this->_contextId,
 			'shibbolethHeaderEmail'
@@ -684,6 +685,8 @@ class ShibbolethHandler extends Handler {
 
 		// optional values
 		$userOrcid = isset($_SERVER[$orcidHeader]) ? $_SERVER[$orcidHeader] : null;
+		// AR @@@ TODO: add access token header here when available
+		$userAccessToken = "mockAccessToken"; // isset($_SERVER[$orcidAccessToken]) ? $_SERVER[$orcidAccessToken] : null;
 		$userInitials = isset($_SERVER[$initialsHeader]) ? $_SERVER[$initialsHeader] : null;
 		$userPhone = isset($_SERVER[$phoneHeader]) ? $_SERVER[$phoneHeader] : null;
 		$userMailing = isset($_SERVER[$mailingHeader]) ? $_SERVER[$mailingHeader] : null;
@@ -710,7 +713,10 @@ class ShibbolethHandler extends Handler {
 		// AR: set Orcid
 		if (!empty($userOrcid)) {
 			$user->setOrcid($userOrcid);
+			// access token should be set with corresponding ORCID iD
+			$user->setData('orcidAccessToken', $userAccessToken);
 		}
+		
 		if (!empty($userInitials)) {
 			$user->setInitials($userInitials);
 		}
