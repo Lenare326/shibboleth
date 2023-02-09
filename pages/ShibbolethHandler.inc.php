@@ -359,9 +359,12 @@ class ShibbolethHandler extends Handler {
 		$userEmail = $_SERVER[$emailHeader];
 		
 		// AR @@@ TODO: add the real headers once the attribute is available
-		
 		$userOrcid = isset($_SERVER[$orcidHeader]) ? $_SERVER[$orcidHeader] : null;
 		$userAccessToken = "mockAccessToken"; //isset($_SERVER[$accessTokenHeader]) ? $_SERVER[$accessTokenHeader] : null;
+
+		// AR @@@ TODO: possible scopes depending on public/member API /authenticate OR /activities/update
+		// Custom: our Shib Login will only user the full scope
+		$userOrcidScope = "/activities/update";
 
 		// The UIN must be set; otherwise login failed.
 		if (is_null($uin)) {
@@ -374,16 +377,7 @@ class ShibbolethHandler extends Handler {
 		$userDao = DAORegistry::getDAO('UserDAO');
 		$user = $userDao->getUserByAuthStr($uin, true);
 		if (isset($user)) {
-			// add ORCID iD and access token only if not connected yet
-			if (empty($user->getOrcid())){
-				$user->setOrcid($userOrcid);
-				$user->setData('orcidAccessToken', $userAccessToken);
-			}
-			else{
-				// @@@ TODO: if user already has a connected ORCID iD check if stored ORCID iD differs from Shib attribute (?)
-				// or just ignore and inform the user that they already have an ORCID iD connected?
-			}
-			
+
 			syslog(LOG_INFO, "Shibboleth located returning user $uin");
 		} else {
 			// We use the e-mail as a key.
@@ -412,8 +406,25 @@ class ShibbolethHandler extends Handler {
 					$userDao->updateObject($user);
 				}
 			} else {
-				$user = $this->_registerFromShibboleth();
+				syslog(LOG_INFO, "Shibboleth located returning email $userEmail");
+				// AR if user does not have an account yet, send back to LoginPage
+				// @@@ TODO: tell the user to register first or redirect to register page if registration is enabled
+				Validation::logout();
+				Validation::redirectLogin();
+				return false;
 			}
+		}
+		
+		// add ORCID iD and access token only if not connected yet
+		if (empty($user->getOrcid())){
+			$user->setOrcid($userOrcid);
+			$user->setData('orcidAccessToken', $userAccessToken);
+			$user->setData('orcidAccessScope', $userOrcidScope);
+		}
+		else{
+			/* @@@ TODO: if user already has a connected ORCID iD check if stored ORCID iD differs from Shib attribute (?)
+			* or just ignore and inform the user that they already have an ORCID iD connected?
+			*/
 		}
 
 		if (isset($user)) {
