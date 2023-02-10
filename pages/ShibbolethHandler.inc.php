@@ -21,6 +21,7 @@ class ShibbolethHandler extends Handler {
 
 	/** @var int */
 	var $_contextId;
+	
 
 	/**
 	* Intercept normal login/registration requests; defer to Shibboleth.
@@ -312,6 +313,13 @@ class ShibbolethHandler extends Handler {
 	function shibLogin($args, $request) {
 		$this->_plugin = $this->_getPlugin();
 		$this->_contextId = $this->_plugin->getCurrentContextId();
+		
+		/* Get status of the Orcid Profile Plugin
+		*/
+
+		$orcidPluginEnabled = $this->orcidEnabled();
+		
+	
 		$uinHeader = $this->_plugin->getSetting(
 			$this->_contextId,
 			'shibbolethHeaderUin'
@@ -332,9 +340,6 @@ class ShibbolethHandler extends Handler {
 			$this->_contextId,
 			'shibbolethHeaderAccessToken'
 		);
-		
-		syslog(LOG_INFO, "User orcid test: $_SERVER[$uinHeader]");
-		//syslog(LOG_INFO, "User orcid test: $_SERVER[$orcidHeader]");
 		
 
 		// We rely on these headers being present.
@@ -415,8 +420,14 @@ class ShibbolethHandler extends Handler {
 		// add ORCID iD and access token only if not connected yet
 		if (empty($user->getOrcid())){
 			$user->setOrcid($userOrcid);
-			$user->setData('orcidAccessToken', $userAccessToken);
-			$user->setData('orcidAccessScope', $userOrcidScope);
+			
+			if ($orcidPluginEnabled == 1) {
+				// only save access token and scope if orcid profile plugin is enabled
+				syslog(LOG_INFO, "Orcid plugin enabled, saving access token and scope.");
+				$user->setData('orcidAccessToken', $userAccessToken);
+				$user->setData('orcidAccessScope', $userOrcidScope);
+			}
+			
 		}
 		else{
 			/* @@@ TODO: if user already has a connected ORCID iD check if stored ORCID iD differs from Shib attribute (?)
@@ -549,6 +560,22 @@ class ShibbolethHandler extends Handler {
 		$plugin = PluginRegistry::getPlugin('generic', SHIBBOLETH_PLUGIN_NAME);
 		return $plugin;
 	}
+	
+	/* Get the status of the Orcid Profile Plugin
+	* @return int isEnabled
+	*/
+	function orcidEnabled() {
+		$pluginSettingsDao = DAORegistry::getDAO('PluginSettingsDAO');
+		$orcidPluginName = "OrcidProfilePlugin";
+		$settingName="enabled";
+		$context = $this->_plugin->getCurrentContextId();
+		
+		$isEnabled = $pluginSettingsDao->getSetting($context, $orcidPluginName, $settingName);
+		
+		return (int) $isEnabled; 
+	}
+	
+	
 
 	/**
 	 * Check if the user should be an admin according to the
@@ -713,8 +740,12 @@ class ShibbolethHandler extends Handler {
 		// AR: set Orcid
 		if (!empty($userOrcid)) {
 			$user->setOrcid($userOrcid);
-			// access token should be set with corresponding ORCID iD
-			$user->setData('orcidAccessToken', $userAccessToken);
+			if ($orcidPluginEnabled == 1) {
+				// only save access token and scope if orcid profile plugin is enabled
+				syslog(LOG_INFO, "Orcid plugin enabled, saving access token and scope.");
+				$user->setData('orcidAccessToken', $userAccessToken);
+				$user->setData('orcidAccessScope', $userOrcidScope);
+			}
 		}
 		
 		if (!empty($userInitials)) {
