@@ -317,7 +317,7 @@ class ShibbolethHandler extends Handler {
 		/* Get status of the Orcid Profile Plugin
 		*/
 
-		$orcidPluginEnabled = $this->orcidEnabled();
+		$orcidPluginEnabled = self::orcidEnabled();
 		
 	
 		$uinHeader = $this->_plugin->getSetting(
@@ -364,9 +364,10 @@ class ShibbolethHandler extends Handler {
 		$userEmail = $_SERVER[$emailHeader];
 		
 		// AR @@@ TODO: add the real headers once the attribute is available
-		$userOrcid = isset($_SERVER[$orcidHeader]) ? $_SERVER[$orcidHeader] : null;
-		$userAccessToken = "mockAccessToken"; //isset($_SERVER[$accessTokenHeader]) ? $_SERVER[$accessTokenHeader] : null;
-
+		// AR @@@ TODO: add access token header here when available; this header will later contain the token, scope and expiration date separated by "$"
+		$userOrcid = "testOrcidId"; //isset($_SERVER[$orcidHeader]) ? $_SERVER[$orcidHeader] : null;
+		$userAccessToken = "testAccessToken"; //isset($_SERVER[$accessTokenHeader]) ? $_SERVER[$accessTokenHeader] : null;
+		$accessExpiresIn = "631138518";
 		// AR @@@ TODO: possible scopes depending on public/member API /authenticate OR /activities/update
 		// Custom: our Shib Login will only user the full scope
 		$userOrcidScope = "/activities/update";
@@ -417,23 +418,24 @@ class ShibbolethHandler extends Handler {
 			}
 		}
 		
-		// add ORCID iD and access token only if not connected yet
-		if (empty($user->getOrcid())){
-			$user->setOrcid($userOrcid);
-			
+
 			if ($orcidPluginEnabled == 1) {
 				// only save access token and scope if orcid profile plugin is enabled
+				$payload = (['access_token' => $userAccessToken, 'scope' => $userOrcidScope, 'expires_in' => $accessExpiresIn, 'id' => $userOrcid]);
+				self::addOrcidPluginFields($user, $payload);
 				syslog(LOG_INFO, "Orcid plugin enabled, saving access token and scope.");
-				$user->setData('orcidAccessToken', $userAccessToken);
-				$user->setData('orcidAccessScope', $userOrcidScope);
+			}
+			else{
+				// set only the Orcid ID, if the Orcid Profile Plugin is not enabled
+				// overwrite, if stored Orcid ID differs form the one delivered by Shib
+				$storedOrcid = $user->getOrcid();
+				if (empty($storedOrcid) || ($storedOrcid != $userOrcid)){
+					$user->setOrcid($userOrcid);
+				}
+				
 			}
 			
-		}
-		else{
-			/* @@@ TODO: if user already has a connected ORCID iD check if stored ORCID iD differs from Shib attribute (?)
-			* or just ignore and inform the user that they already have an ORCID iD connected?
-			*/
-		}
+
 
 		if (isset($user)) {
 			$this->_checkAdminStatus($user);
@@ -564,7 +566,7 @@ class ShibbolethHandler extends Handler {
 	/* Get the status of the Orcid Profile Plugin
 	* @return int isEnabled
 	*/
-	function orcidEnabled() {
+	/*function orcidEnabled() {
 		$pluginSettingsDao = DAORegistry::getDAO('PluginSettingsDAO');
 		$orcidPluginName = "OrcidProfilePlugin";
 		$settingName="enabled";
@@ -572,6 +574,23 @@ class ShibbolethHandler extends Handler {
 		
 		$isEnabled = $pluginSettingsDao->getSetting($context, $orcidPluginName, $settingName);
 		
+		return (int) $isEnabled; 
+	}*/
+	
+		/** Get the status of the Orcid Profile Plugin
+	* @return int isEnabled
+	*/
+	function orcidEnabled() {
+		$pluginSettingsDao = DAORegistry::getDAO('PluginSettingsDAO');
+		$orcidPluginName = "OrcidProfilePlugin";
+		$settingName="enabled";
+		
+		$_plugin = PluginRegistry::getPlugin('generic', 'ShibbolethAuthPlugin');
+		$context = $_plugin->getCurrentContextId();
+		
+		$isEnabled = $pluginSettingsDao->getSetting($context, $orcidPluginName, $settingName);
+		
+		error_log("Orcid Plugin enabled: $isEnabled");
 		return (int) $isEnabled; 
 	}
 	
@@ -647,14 +666,6 @@ class ShibbolethHandler extends Handler {
 			$this->_contextId,
 			'shibbolethHeaderUin'
 		);		
-		$orcidHeader = $this->_plugin->getSetting(
-			$this->_contextId,
-			'shibbolethHeaderOrcid'
-		);
-		$accessTokenHeader = $this->_plugin->getSetting(
-		$this->_contextId,
-		'shibbolethHeaderAccessToken'
-		);
 		$emailHeader = $this->_plugin->getSetting(
 			$this->_contextId,
 			'shibbolethHeaderEmail'
@@ -711,13 +722,11 @@ class ShibbolethHandler extends Handler {
 		}
 
 		// optional values
-		$userOrcid = isset($_SERVER[$orcidHeader]) ? $_SERVER[$orcidHeader] : null;
-		// AR @@@ TODO: add access token header here when available
-		$userAccessToken = "mockAccessToken"; // isset($_SERVER[$orcidAccessToken]) ? $_SERVER[$orcidAccessToken] : null;
 		$userInitials = isset($_SERVER[$initialsHeader]) ? $_SERVER[$initialsHeader] : null;
 		$userPhone = isset($_SERVER[$phoneHeader]) ? $_SERVER[$phoneHeader] : null;
 		$userMailing = isset($_SERVER[$mailingHeader]) ? $_SERVER[$mailingHeader] : null;
 		$userLastName = isset($_SERVER[$lastNameHeader]) ? $_SERVER[$lastNameHeader] : null;
+
 
 		$userDao = DAORegistry::getDAO('UserDAO');
 		$user = $userDao->newDataObject();
@@ -735,17 +744,6 @@ class ShibbolethHandler extends Handler {
 		
 		if (!empty($userLastName)) {
 			$user->setFamilyName($userLastName, $sitePrimaryLocale);
-		}
-		
-		// AR: set Orcid
-		if (!empty($userOrcid)) {
-			$user->setOrcid($userOrcid);
-			if ($orcidPluginEnabled == 1) {
-				// only save access token and scope if orcid profile plugin is enabled
-				syslog(LOG_INFO, "Orcid plugin enabled, saving access token and scope.");
-				$user->setData('orcidAccessToken', $userAccessToken);
-				$user->setData('orcidAccessScope', $userOrcidScope);
-			}
 		}
 		
 		if (!empty($userInitials)) {
@@ -766,8 +764,12 @@ class ShibbolethHandler extends Handler {
 				Validation::generatePassword(40)
 			)
 		);
-
+		
+		
 		$userDao->insertObject($user);
+		
+
+		
 		$userId = $user->getId();
 		if ($userId) {
 			return $user;
@@ -820,5 +822,73 @@ class ShibbolethHandler extends Handler {
 			$this->_contextId,
 			'shibbolethOptional'
 		);
+	}
+	
+	
+	
+	
+	
+	/**
+	* stores and handles orcid id, access token, scope, and token expiration date
+	* used only if Orcid Profile Plugin is enabled
+	* adding these fields improves compatibility with Orcid Plugin functions
+	*/
+	public static function addOrcidPluginFields($user, $payload){
+		$userDao = DAORegistry::getDAO('UserDAO');
+		
+		$userAccessToken = null;
+		$userOrcidScope = null;
+		$accessTokenExpiration = null;
+		
+		try {
+			$userAccessToken = $payload['access_token'];
+			$userOrcidScope = $payload['scope'];
+			$accessTokenExpiration = $payload['expires_in'];	
+		}
+		catch (Exception $e) {
+			error_log("No acccess token found.");
+		}
+		
+		if(!empty($userAccessToken) && !empty($userOrcidScope) && !empty($accessTokenExpiration)) {	
+			// convert expiration date (delivered with oauth) to date in format yyyy-mm-dd
+			$accessTokenExpiration=Date('Y-m-d', strtotime('+'.$accessTokenExpiration. 'seconds'));
+
+			// try get stored token expiration date from DB for comparison
+			$storedExpDate = $user->getData('orcidAccessExpiresOn');
+			$accessExpiredDate = empty($storedExpDate) ? null : date_create($storedExpDate);
+			$today = date_create(date('Y-m-d'));
+			
+			// get ORCID iD from DB (needs to be explicitly set to null, otherwise logic is not correct)
+			$orcidStoredInDB = empty($user->getData('orcid')) ? null : $user->getData('orcid');
+			
+			// CONDITIONS OF WHEN TO UPDATE ORCID FIELDS
+			$newEntry = (empty($orcidStoredInDB) || empty($storedExpDate));
+			$overwriteEntry = (!empty($accessExpiredDate) && ($today > $accessExpiredDate));
+
+			$username = $user->getData('username');
+			
+			if($newEntry || $overwriteEntry){
+				// add date if no orcid id was stored yet or if it was entered manually (in the latter case, the token expiration date should be empty)
+				$orcidIdUrl = $payload['id']; //"https://sandbox.orcid.org/".$payload['id'];
+				$user->setOrcid($orcidIdUrl);
+				$user->setData('orcidAccessToken', $userAccessToken);
+				$user->setData('orcidAccessScope', $userOrcidScope);
+				$user->setData('orcidAccessExpiresOn', $accessTokenExpiration); // expiration date needed by orcid plugin to push to record
+				
+				
+				error_log("Orcid fields updated for entry $username");
+			}
+
+			else{
+				error_log("Already stored an ORCID iD with a valid token for $username, not overwriting.");
+			}
+
+			$userDao->updateObject($user); // this needs to be called, otherwise the data is not saved
+			
+		}
+		
+		else {
+			error_log("ShibbholethHandler could not save ORCID data. Fields empty!");
+		}
 	}
 }
