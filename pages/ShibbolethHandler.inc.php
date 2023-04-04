@@ -563,23 +563,7 @@ class ShibbolethHandler extends Handler {
 		return $plugin;
 	}
 	
-	/* Get the status of the Orcid Profile Plugin
-	* @return int isEnabled
-	*/
-	/*function orcidEnabled() {
-		$pluginSettingsDao = DAORegistry::getDAO('PluginSettingsDAO');
-		$orcidPluginName = "OrcidProfilePlugin";
-		$settingName="enabled";
-		$context = $this->_plugin->getCurrentContextId();
-		
-		$isEnabled = $pluginSettingsDao->getSetting($context, $orcidPluginName, $settingName);
-		
-		return (int) $isEnabled; 
-	}*/
-	
-		/** Get the status of the Orcid Profile Plugin
-	* @return int isEnabled
-	*/
+
 	function orcidEnabled() {
 		$pluginSettingsDao = DAORegistry::getDAO('PluginSettingsDAO');
 		$orcidPluginName = "OrcidProfilePlugin";
@@ -772,6 +756,19 @@ class ShibbolethHandler extends Handler {
 		
 		$userId = $user->getId();
 		if ($userId) {
+			// assign reader role to new users
+			$userGroupDao = DAORegistry::getDAO('UserGroupDAO');
+			$ctx = $this->_plugin->getCurrentContextId();
+			$readerGroup = $userGroupDao->getByRoleId($ctx, ROLE_ID_READER)->next();
+			if(!(empty($readerGroup))){
+				$readerId = $readerGroup->getId();
+				$userGroupDao->assignUserToGroup($userId, $readerId);
+			}
+			else{
+				error_log("Could not assign Reader Role in current context.");
+			}
+			
+			
 			return $user;
 		} else {
 			return null;
