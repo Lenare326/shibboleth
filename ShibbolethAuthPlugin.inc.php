@@ -55,8 +55,27 @@ class ShibbolethAuthPlugin extends GenericPlugin {
 
 			// Register callback for smarty filters
 			HookRegistry::register('TemplateManager::display', array($this, 'handleTemplateDisplay'));
+			
+			// Add more ORCiD fields to UserDAO
+			HookRegistry::register('userdao::getAdditionalFieldNames', array($this, 'handleAdditionalFieldNames'));
 		}
 		return $success;
+	}
+	
+	
+	/**
+	 * add Orcid Plugin Fields
+	 */
+	function handleAdditionalFieldNames($hookName, $params) {
+		$fields =& $params[1];
+		$fields[] = 'orcidSandbox';
+		$fields[] = 'orcidAccessToken';
+		$fields[] = 'orcidAccessScope';
+		$fields[] = 'orcidRefreshToken';
+		$fields[] = 'orcidAccessExpiresOn';
+		$fields[] = 'orcidAccessDenied';
+
+		return false;
 	}
 
 	/**
