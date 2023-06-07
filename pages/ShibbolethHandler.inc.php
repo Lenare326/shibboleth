@@ -549,6 +549,11 @@ class ShibbolethHandler extends Handler {
 	}
 	
 
+
+	/**
+	 * Gets the status of the ORCID Profile Plugin
+	 * currently UNUSED
+	 */
 	function orcidEnabled() {
 		$pluginSettingsDao = DAORegistry::getDAO('PluginSettingsDAO');
 		$orcidPluginName = "OrcidProfilePlugin";
@@ -559,7 +564,6 @@ class ShibbolethHandler extends Handler {
 		
 		$isEnabled = $pluginSettingsDao->getSetting($context, $orcidPluginName, $settingName);
 		
-		error_log("Orcid Plugin enabled: $isEnabled");
 		return (int) $isEnabled; 
 	}
 	
@@ -863,7 +867,7 @@ class ShibbolethHandler extends Handler {
 				// in any case, set the ORCID iD (e.g. if Shib delivers only ORCID iD but no token etc)
 				$user->setData('orcid', $orcidIdUrl);
 				$userDao->updateObject($user);
-				error_log("ORCID iD stored/updated for user $username.");
+				syslog(LOG_INFO, "ORCID iD stored/updated for user $username.");
 			}
 		
 			if(!empty($userAccessToken) && !empty($userOrcidScope) && !empty($accessTokenExpiration)) {	
@@ -900,12 +904,12 @@ class ShibbolethHandler extends Handler {
 					}
 
 
-					error_log("Orcid fields updated for entry $username");
+					syslog(LOG_INFO, "Orcid fields updated for entry $username");
 				}
 				
 
 				else {
-					error_log("Already stored an ORCID iD with a valid token for user $username, not overwriting.");
+					syslog(LOG_INFO, "Already stored an ORCID iD with a valid token for user $username, not overwriting.");
 				}
 				
 				$userDao->updateObject($user);
@@ -914,11 +918,11 @@ class ShibbolethHandler extends Handler {
 			
 			
 			else {
-				error_log("Shibboleth did not save additional ORCID data (token, scope, expiry). Fields empty!");
+				syslog(LOG_NOTICE, "Shibboleth did not save additional ORCID data (token, scope, expiry). Fields empty!");
 			}
 		}
 		else{
-			error_log("ORCID iD Header was empty! If the ORCID iD header was not configured, this is the intended behaviour and this message can be ignored.");
+			syslog(LOG_NOTICE, "ORCID iD Header was empty! If the ORCID iD header was not configured, this is the intended behaviour and this message can be ignored.");
 		}
 	}
 }
