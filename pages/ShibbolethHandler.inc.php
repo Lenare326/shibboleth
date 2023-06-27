@@ -102,13 +102,8 @@ class ShibbolethHandler extends Handler {
 	/**
 	 * @copydoc ShibbolethHandler::activateUser()
 	 */
-	
-	// Use lostPassword function from LoginHandler instead of _shibbolethRedirect
-	// Otherwise there would always be a redirect to Shib Sign-in 
-	function lostPassword($args, $request) {
-			                $this->setupTemplate($request);
-			                $templateMgr = TemplateManager::getManager($request);
-			                $templateMgr->display('frontend/pages/userLostPassword.tpl');
+	function lostPassword($args, $request) {	                
+		return $this->_shibbolethRedirect($request);
 	}
 
 
@@ -203,21 +198,13 @@ class ShibbolethHandler extends Handler {
 		return $this->register($request);
 	}
 
-
-
-    /**
-    * Helper function from LoginHandler- set mail From
-    * can be overriden by child classes
-    * @param $request PKPRequest
-    * @param MailTemplate $mail
-    * @param $site Site
-    */
-    function _setMailFrom($request, $mail, $site) {
-		$mail->setReplyTo($site->getLocalizedContactEmail(), $site->getLocalizedContactName());
-        return true;
-    }
-
-
+	/**
+	 * @copydoc ShibbolethHandler::activateUser()
+	 */
+	function requestResetPassword($args, $request) {
+		return $this->_shibbolethRedirect($request);
+	}
+                                                                                              
 	/**
 	 * @copydoc ShibbolethHandler::activateUser()
 	 */
@@ -837,10 +824,6 @@ class ShibbolethHandler extends Handler {
 			'shibbolethOptional'
 		);
 	}
-	
-	
-	
-	
 	
 	/**
 	* stores and handles orcid id, access token, scope, and token expiration date
