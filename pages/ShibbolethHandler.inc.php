@@ -106,7 +106,6 @@ class ShibbolethHandler extends Handler {
 		return $this->_shibbolethRedirect($request);
 	}
 
-
 	/**
 	 * @copydoc ShibbolethHandler::activateUser()
 	 */
@@ -267,14 +266,22 @@ class ShibbolethHandler extends Handler {
 		$uin = $_SERVER[$uinHeader];
 		$userEmail = $_SERVER[$emailHeader];
 		
-		// AR @@@ TODO: add the real headers once the attribute is available
-		// AR @@@ TODO: add access token header here when available; this header will later contain the token, scope and expiration date separated by "$"
+		// get the accessData (token, scope, expiration)
+		// accessTokenHeader contains the token, scope and expiration date separated by "$"
 		$userOrcid = isset($_SERVER[$orcidHeader]) ? $_SERVER[$orcidHeader] : null;
-		$userAccessToken = "testAccessToken"; //isset($_SERVER[$accessTokenHeader]) ? $_SERVER[$accessTokenHeader] : null;
-		$accessExpiresIn = "631138518";
-		// AR @@@ TODO: possible scopes depending on public/member API /authenticate OR /activities/update
-		// Custom: our Shib Login will only user the full scope
-		$userOrcidScope = "/activities/update";
+		
+		// extract the data from the Access Token Attribute if present
+		$userAccessData = (!empty($accessTokenHeader) && isset($_SERVER[$accessTokenHeader]))? $_SERVER[$accessTokenHeader] : null;
+		$userAccessToken = null;
+		$userAccessScope = null;
+		$userAccessExpiresOn = null;
+			
+		if(isset($userAccessData)){
+			$extractedAccessData = self::extractShibTokenData($userAccessData);
+			$userAccessToken = $extractedAccessData['token'];
+			$userAccessExpiresOn = $extractedAccessData['expires'];
+			$userAccessScope = $extractedAccessData['scope'];
+		}
 
 		// The UIN must be set; otherwise login failed.
 		if (is_null($uin)) {
@@ -325,7 +332,7 @@ class ShibbolethHandler extends Handler {
 
 
 			// only save access token and scope if orcid profile plugin is enabled
-			$payload = (['access_token' => $userAccessToken, 'scope' => $userOrcidScope, 'expires_in' => $accessExpiresIn, 'orcid' => $userOrcid]);
+			$payload = (['access_token' => $userAccessToken, 'scope' => $userAccessScope, 'expires_in' => $userAccessExpiresOn, 'orcid' => $userOrcid]);
 			self::addOrcidPluginFields($user, $payload);
 			
 
@@ -476,8 +483,6 @@ class ShibbolethHandler extends Handler {
 		return (int) $isEnabled; 
 	}
 	
-	
-
 	/**
 	 * Check if the user should be an admin according to the
 	 * Shibboleth plugin settings, and adjust the User object
@@ -584,14 +589,22 @@ class ShibbolethHandler extends Handler {
 		);
 		
 		
-		// AR @@@ TODO: add the real headers once the attribute is available
-		// AR @@@ TODO: add access token header here when available; this header will later contain the token, scope and expiration date separated by "$"
+		// get the accessData (token, scope, expiration)
+		// accessTokenHeader contains the token, scope and expiration date separated by "$"
 		$userOrcid = isset($_SERVER[$orcidHeader]) ? $_SERVER[$orcidHeader] : null;
-		$userAccessToken = "testAccessToken"; //isset($_SERVER[$accessTokenHeader]) ? $_SERVER[$accessTokenHeader] : null;
-		$accessExpiresIn = "631138518";
-		// AR @@@ TODO: possible scopes depending on public/member API /authenticate OR /activities/update
-		// Custom: our Shib Login will only user the full scope
-		$userOrcidScope = "/activities/update";
+
+		// extract the data from the Access Token Attribute if present
+		$userAccessData = (!empty($accessTokenHeader) && isset($_SERVER[$accessTokenHeader]))? $_SERVER[$accessTokenHeader] : null;
+		$userAccessToken = null;
+		$userAccessScope = null;
+		$userAccessExpiresOn = null;
+			
+		if(isset($userAccessData)){
+			$extractedAccessData = self::extractShibTokenData($userAccessData);
+			$userAccessToken = $extractedAccessData['token'];
+			$userAccessExpiresOn = $extractedAccessData['expires'];
+			$userAccessScope = $extractedAccessData['scope'];
+		}
 
 		// We rely on these headers being present.	Redundant with the
 		// login handler, but we need to check for more headers than
@@ -691,7 +704,7 @@ class ShibbolethHandler extends Handler {
 			
 			
 			// update orcid data on login
-			$payload = (['access_token' => $userAccessToken, 'scope' => $userOrcidScope, 'expires_in' => $accessExpiresIn, 'orcid' => $userOrcid]);
+			$payload = (['access_token' => $userAccessToken, 'scope' => $userAccessScope, 'expires_in' => $userAccessExpiresOn, 'orcid' => $userOrcid]);
 			self::addOrcidPluginFields($user, $payload);
 			
 			
@@ -777,7 +790,7 @@ class ShibbolethHandler extends Handler {
 		
 			if(!empty($userAccessToken) && !empty($userOrcidScope) && !empty($accessTokenExpiration)) {	
 				// convert expiration date (delivered with oauth) to date in format yyyy-mm-dd
-				$accessTokenExpiration=Date('Y-m-d', strtotime('+'.$accessTokenExpiration. 'seconds'));
+				// $accessTokenExpiration=Date('Y-m-d', strtotime('+'.$accessTokenExpiration. 'seconds'));
 
 				// try get stored token expiration date from DB for comparison
 				$storedExpDate = $user->getData('orcidAccessExpiresOn');
@@ -788,8 +801,6 @@ class ShibbolethHandler extends Handler {
 				$tokenStoredInDB = $user->getData('orcidAccessToken');
 				
 				// CONDITIONS OF WHEN TO UPDATE ORCID FIELDS (no entry yet, different ORCID iD, expired token, different token)
-				// updates on almost every login since the token is always freshly created (but this is the only way to catch IDs previously saved with the Orcid Plugin)
-				// TODO: maybe simplify and always update instead of checking conditions
 				$newEntry = (empty($orcidStoredInDB) || empty($storedExpDate));
 				$overwriteEntry = (!empty($accessExpiredDate) && ($today > $accessExpiredDate) || ($orcidStoredInDB != $orcidIdUrl) || ($scopeStoredInDB != $userOrcidScope) || ($tokenStoredInDB != $userAccessToken));
 
@@ -803,7 +814,7 @@ class ShibbolethHandler extends Handler {
 					$user->setData('orcidAccessExpiresOn', $accessTokenExpiration);
 					
 					// if Orcid iD was stored previously via Orcid Plugin, remove the refresh token after overwriting with new data
-					// TODO: can be adpated once the refresh token will be delivered via OpenID and Shibboleth
+					// TODO: can be adpated once the refresh token will be delivered via Shibboleth
 					if(!empty($user->getData('orcidRefreshToken'))){
 						$user->setData('orcidRefreshToken', null);
 					}
@@ -829,5 +840,22 @@ class ShibbolethHandler extends Handler {
 		else{
 			syslog(LOG_NOTICE, "ORCID iD Header was empty! If the ORCID iD header was not configured, this is the intended behaviour and this message can be ignored.");
 		}
+	}
+	
+	/**
+	* Helper function to ectract data from the Shib AccessToken Header
+	*/
+	public static function extractShibTokenData($accessTokenData){
+		$splitVals = explode('$', $accessTokenData);
+		$token = $splitVals[0];
+		$expiration = $splitVals[1];
+		$scope = $splitVals[2];
+		
+		$extractedData = [
+							'token' => $token, 
+							'expires' => $expiration, 
+							'scope' => $scope
+						];
+		return $extractedData;
 	}
 }
